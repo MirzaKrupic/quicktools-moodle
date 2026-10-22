@@ -79,30 +79,17 @@ class review_window {
     }
 
     /**
-     * Options to pre-tick for a quiz that has no window yet: what it already shows after closing, or a sensible set.
-     *
-     * @param \stdClass|null $quiz
-     * @return int[] column => 0/1
-     */
-    public static function default_mask(?\stdClass $quiz): array {
-        $bits = $quiz ? self::current_bits($quiz) : [];
-        if (!array_sum($bits)) {
-            $bits = array_fill_keys(self::FIELDS, 0);
-            $bits['reviewattempt'] = $bits['reviewcorrectness'] = $bits['reviewmarks'] = 1;
-        }
-        return $bits;
-    }
-
-    /**
      * Create, update or remove the window for a quiz from the settings form.
+     *
+     * The teacher's choice is whatever is ticked in the form's "After the quiz is closed" column. While the
+     * window is closed Moodle shows them cleared in the DB, so the form is pre-filled from the saved choice.
      *
      * @param int $quizid
      * @param bool $enabled
      * @param int $opentime
      * @param int $closetime
-     * @param int[] $mask column => 0/1, which review options students get while the window is open
      */
-    public static function save(int $quizid, bool $enabled, int $opentime, int $closetime, array $mask = []): void {
+    public static function save(int $quizid, bool $enabled, int $opentime, int $closetime): void {
         global $DB;
 
         $quiz = $DB->get_record('quiz', ['id' => $quizid], '*', MUST_EXIST);
@@ -119,19 +106,16 @@ class review_window {
             return;
         }
 
-        $clean = [];
-        foreach (self::FIELDS as $field) {
-            $clean[$field] = !empty($mask[$field]) ? 1 : 0;
-        }
-        if (!$clean['reviewattempt']) {
+        $mask = self::current_bits($quiz);
+        if (!$mask['reviewattempt']) {
             // Without "the attempt" nothing else can be shown.
-            $clean = array_fill_keys(self::FIELDS, 0);
+            $mask = array_fill_keys(self::FIELDS, 0);
         }
 
         if (!$window) {
             $window = (object) ['quizid' => $quizid, 'state' => ''];
         }
-        $window->mask = json_encode($clean);
+        $window->mask = json_encode($mask);
         $window->opentime = $opentime;
         $window->closetime = $closetime;
         $window->timemodified = time();

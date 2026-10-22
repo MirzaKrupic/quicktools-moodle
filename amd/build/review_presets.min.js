@@ -101,9 +101,11 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                 nameInput.setAttribute('aria-label', S.name);
                 var nameOk = el('button', {type: 'button', className: 'btn btn-primary mr-2', textContent: S.savebtn});
                 var nameCancel = el('button', {type: 'button', className: 'btn btn-secondary', textContent: S.cancel});
-                var namePanel = el('div', {className: 'd-none d-flex align-items-center w-100 mt-2'},
-                    [nameInput, nameOk, nameCancel]);
-                namePanel.classList.add('d-none');
+                var namePanel = el('div', {className: 'align-items-center w-100 mt-2 d-none'}, [nameInput, nameOk, nameCancel]);
+                var showName = function(show) {
+                    namePanel.classList.toggle('d-none', !show);
+                    namePanel.classList.toggle('d-flex', show);
+                };
 
                 var confirmPanel = el('div', {className: 'd-none align-items-center w-100 mt-2'});
 
@@ -119,8 +121,9 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                     var closed = document.getElementById('id_attemptclosed');
                     var schedule = document.getElementById('id_local_qrw_enabled');
                     var locked = !!closed && closed.disabled;
-                    hint.textContent = (schedule && schedule.checked) ? S.hintschedule : S.hintdate;
-                    hint.classList.toggle('d-none', !locked);
+                    var scheduled = !!schedule && schedule.checked;
+                    hint.textContent = locked ? S.hintdate : S.hintschedule;
+                    hint.classList.toggle('d-none', !locked && !scheduled);
                 };
                 var form = container.closest('form');
                 if (form) {
@@ -131,6 +134,17 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                     });
                 }
                 window.setTimeout(refreshHint, 300);
+                if (data.windowmask) {
+                    // Show the teacher's saved choice for the review window (the quiz itself may be hiding it right now).
+                    OPTIONS.forEach(function(option) {
+                        var cell = box(option, 'closed');
+                        var wanted = !!data.windowmask['review' + option];
+                        if (cell && cell.checked !== wanted) {
+                            cell.checked = wanted;
+                            cell.dispatchEvent(new Event('change', {bubbles: true}));
+                        }
+                    });
+                }
 
                 var find = function(ref) {
                     return state.presets.filter(function(p) {
@@ -190,11 +204,11 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                 });
 
                 saveBtn.addEventListener('click', function() {
-                    namePanel.classList.remove('d-none');
+                    showName(true);
                     nameInput.focus();
                 });
                 nameCancel.addEventListener('click', function() {
-                    namePanel.classList.add('d-none');
+                    showName(false);
                 });
                 var doSave = function() {
                     var name = nameInput.value.trim();
@@ -208,7 +222,7 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                             return !p.builtin && p.name === name;
                         })[0];
                         update(result, saved ? saved.ref : '');
-                        namePanel.classList.add('d-none');
+                        showName(false);
                         nameInput.value = '';
                         say(S.saved);
                         return;
@@ -220,7 +234,7 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                         e.preventDefault();
                         doSave();
                     } else if (e.key === 'Escape') {
-                        namePanel.classList.add('d-none');
+                        showName(false);
                     }
                 });
 

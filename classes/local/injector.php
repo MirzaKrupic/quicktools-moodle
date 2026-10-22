@@ -46,7 +46,7 @@ class injector {
      * Add the JavaScript for the current page, if any tool applies.
      */
     public static function inject(): void {
-        global $PAGE, $USER;
+        global $DB, $PAGE, $USER;
 
         if (self::$done || !isloggedin() || isguestuser()) {
             return;
@@ -61,8 +61,15 @@ class injector {
         // Review option presets on the quiz settings form.
         if ($PAGE->pagetype === 'mod-quiz-mod' && has_capability('moodle/course:manageactivities', $PAGE->context)) {
             $isnew = optional_param('add', '', PARAM_ALPHANUMEXT) === 'quiz';
-            $PAGE->requires->js_call_amd('local_quicktools/review_presets', 'init',
-                [review_presets::for_page((int) $USER->id) + ['isnew' => $isnew]]);
+            $data = review_presets::for_page((int) $USER->id) + ['isnew' => $isnew, 'windowmask' => null];
+            // A quiz with a review schedule shows the saved choice, not what is hidden at this moment.
+            $cmid = optional_param('update', 0, PARAM_INT);
+            $quizid = $cmid ? $DB->get_field('course_modules', 'instance', ['id' => $cmid]) : 0;
+            $window = $quizid ? review_window::get((int) $quizid) : false;
+            if ($window) {
+                $data['windowmask'] = json_decode($window->mask ?? '', true) ?: null;
+            }
+            $PAGE->requires->js_call_amd('local_quicktools/review_presets', 'init', [$data]);
         }
 
         // Bulk marks on the quiz Questions page.
