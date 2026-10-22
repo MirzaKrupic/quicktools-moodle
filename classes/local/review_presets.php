@@ -63,11 +63,12 @@ class review_presets {
      */
     public static function builtin(): array {
         $presets = [
-            'moodledefault' => ['during' => ['attempt'], 'immediately' => 'all', 'open' => 'all', 'closed' => ['attempt']],
-            'practice' => ['during' => ['attempt'], 'immediately' => 'all', 'open' => 'all', 'closed' => 'all'],
-            'examafterclose' => ['during' => ['attempt'], 'closed' => 'all'],
-            'exammarksonly' => ['during' => ['attempt'], 'closed' => ['attempt', 'marks']],
+            // Everything visible straight after the attempt, later while open, and after the quiz closes.
+            'showall' => ['during' => ['attempt'], 'immediately' => 'all', 'open' => 'all', 'closed' => 'all'],
+            // Students can take the quiz but never review it.
             'noreview' => ['during' => ['attempt']],
+            // Nothing until the quiz closes, then everything.
+            'afterclose' => ['during' => ['attempt'], 'closed' => 'all'],
         ];
         $out = [];
         foreach ($presets as $key => $ticked) {
@@ -154,7 +155,12 @@ class review_presets {
      * @return string
      */
     public static function get_default(int $userid): string {
-        return (string) get_user_preferences(self::PREF, '', $userid);
+        $ref = (string) get_user_preferences(self::PREF, '', $userid);
+        // A built-in that no longer exists (older versions had more) counts as no default.
+        if (strpos($ref, 'b:') === 0 && !in_array($ref, array_column(self::builtin(), 'ref'))) {
+            return '';
+        }
+        return $ref;
     }
 
     /**

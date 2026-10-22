@@ -13,8 +13,7 @@ Small quality-of-life fixes for everyday course and quiz work.
   puts them back when it opens, within about a minute; the form always shows your choice. The quiz needs a close date.
 
 - **Review option presets.** On the quiz settings page, a bar at the top of *Review options* applies a whole preset
-  (all four columns, 28 boxes) in one click. Built-in presets: Moodle default, Practice, Exam (everything after close),
-  Exam (attempt and marks after close), No review. *Save current options as a preset…* stores your own under a name,
+  (all four columns, 28 boxes) in one click. Built-in presets: Show everything, Turn off all review, and Open after the quiz is closed (everything). *Save current options as a preset…* stores your own under a name,
   and *Use for new quizzes* makes one the default that new quizzes start from. Presets are per teacher.
 
 Bulk move/hide of sections and activities is not included: Moodle has a built-in *Bulk edit* mode.
