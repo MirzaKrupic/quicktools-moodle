@@ -64,3 +64,5 @@ $string['reviewsopen'] = 'Reviews open';
 $string['setmarksselected'] = 'Set marks for selected';
 $string['taskapply'] = 'Open and close quiz review windows';
 $string['windowheading'] = 'Review window';
+$string['windowpreset'] = 'Preset (changes only these options)';
+$string['windowshows'] = 'Students can see during the window';

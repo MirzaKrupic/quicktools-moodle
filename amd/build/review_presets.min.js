@@ -42,8 +42,11 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
         return grid;
     };
 
-    var applyGrid = function(grid) {
+    var applyGrid = function(grid, onlyWhen) {
         WHEN.forEach(function(when) {
+            if (onlyWhen && onlyWhen.indexOf(when) === -1) {
+                return;
+            }
             // "The attempt" first, so Moodle's own enable/disable rules settle before the rest.
             OPTIONS.forEach(function(option) {
                 var el = box(option, when);
@@ -78,24 +81,24 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
             Str.get_strings([
                 'presetapply', 'presetchoose', 'presetsave', 'presetname', 'presetsavebtn', 'presetcancel',
                 'presetdelete', 'presetdeleteq', 'presetsetdefault', 'presetisdefault', 'presetnodefault',
-                'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied', 'hintclosedate', 'hintschedule'
+                'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied', 'hintclosedate', 'hintschedule', 'windowshows', 'windowpreset'
             ].map(function(key) {
                 return {key: key, component: 'local_quicktools'};
             })).then(function(str) {
                 var S = {apply: str[0], choose: str[1], save: str[2], name: str[3], savebtn: str[4], cancel: str[5],
                     del: str[6], delq: str[7], setdefault: str[8], isdefault: str[9], nodefault: str[10],
                     saved: str[11], yours: str[12], builtin: str[13], applied: str[14], hintdate: str[15],
-                    hintschedule: str[16]};
+                    hintschedule: str[16], windowshows: str[17], windowpreset: str[18]};
 
-                var bar = el('div', {className: 'd-flex flex-wrap align-items-center mb-3 local-quicktools-presets'});
-                var label = el('label', {htmlFor: 'local-quicktools-preset', className: 'mr-2 mb-0', textContent: S.apply});
-                var select = el('select', {id: 'local-quicktools-preset', className: 'custom-select mr-2'});
+                var bar = el('div', {className: 'd-flex flex-wrap align-items-center mb-2 local-quicktools-presets'});
+                var label = el('label', {htmlFor: 'local-quicktools-preset', className: 'mr-2 mb-2', textContent: S.apply});
+                var select = el('select', {id: 'local-quicktools-preset', className: 'custom-select mr-2 mb-2'});
                 select.style.width = 'auto';
                 select.style.maxWidth = '30rem';
-                var saveBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2', textContent: S.save});
-                var defBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2', disabled: true});
-                var delBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 d-none', textContent: S.del});
-                var status = el('span', {className: 'text-muted', role: 'status'});
+                var saveBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', textContent: S.save});
+                var defBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', disabled: true});
+                var delBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2 d-none', textContent: S.del});
+                var status = el('span', {className: 'text-muted mb-2', role: 'status'});
 
                 var nameInput = el('input', {type: 'text', className: 'form-control mr-2', maxLength: 100, placeholder: S.name});
                 nameInput.setAttribute('aria-label', S.name);
@@ -158,9 +161,10 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                     status.textContent = text || '';
                 };
 
-                var render = function(selected) {
-                    select.textContent = '';
-                    select.appendChild(el('option', {value: '', textContent: S.choose}));
+                var winSelect = null;
+                var fill = function(target, selected) {
+                    target.textContent = '';
+                    target.appendChild(el('option', {value: '', textContent: S.choose}));
                     [[S.builtin, true], [S.yours, false]].forEach(function(group) {
                         var items = state.presets.filter(function(p) {
                             return !!p.builtin === group[1];
@@ -173,9 +177,15 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                             optgroup.appendChild(el('option', {value: p.ref,
                                 textContent: p.name + (p.ref === state.defaultRef ? ' ★' : '')}));
                         });
-                        select.appendChild(optgroup);
+                        target.appendChild(optgroup);
                     });
-                    select.value = find(selected) ? selected : '';
+                    target.value = find(selected) ? selected : '';
+                };
+                var render = function(selected) {
+                    fill(select, selected);
+                    if (winSelect) {
+                        fill(winSelect, '');
+                    }
                     refreshButtons();
                 };
                 var refreshButtons = function() {
@@ -274,6 +284,75 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                         }).catch(Notification.exception);
                     });
                 });
+
+                // The same choices inside the Review window section, kept in step with the real column above.
+                var winContainer = document.getElementById('id_local_qrw_hdrcontainer');
+                var enableBox = document.getElementById('id_local_qrw_enabled');
+                if (winContainer && enableBox) {
+                    var panel = el('div', {className: 'local-quicktools-windowpanel row mt-2 mb-3'});
+                    var right = el('div', {className: 'col-md-9'});
+                    panel.appendChild(el('div', {className: 'col-md-3 col-form-label', textContent: S.windowshows}));
+                    panel.appendChild(right);
+                    var row = el('div', {className: 'd-flex flex-wrap align-items-center mb-2'});
+                    row.appendChild(el('label', {htmlFor: 'local-quicktools-winpreset', className: 'mr-2 mb-0',
+                        textContent: S.windowpreset}));
+                    winSelect = el('select', {id: 'local-quicktools-winpreset', className: 'custom-select'});
+                    winSelect.style.width = 'auto';
+                    winSelect.style.maxWidth = '30rem';
+                    row.appendChild(winSelect);
+                    right.appendChild(row);
+                    var list = el('div', {className: 'd-flex flex-wrap'});
+                    var mirrors = [];
+                    OPTIONS.forEach(function(option) {
+                        var core = box(option, 'closed');
+                        if (!core) {
+                            return;
+                        }
+                        var item = core.closest('.review_option_item') || core.parentElement;
+                        var coreLabel = document.querySelector('label[for="id_' + option + 'closed"]') || item;
+                        var cb = el('input', {type: 'checkbox', id: 'local-quicktools-win-' + option, className: 'mr-1'});
+                        var text = el('label', {htmlFor: cb.id, className: 'mb-0',
+                            textContent: coreLabel ? coreLabel.textContent.trim() : option});
+                        list.appendChild(el('div', {className: 'd-flex align-items-center mr-4 mb-1'}, [cb, text]));
+                        mirrors.push({cb: cb, core: core});
+                        cb.addEventListener('change', function() {
+                            if (core.checked !== cb.checked) {
+                                core.checked = cb.checked;
+                                core.dispatchEvent(new Event('change', {bubbles: true}));
+                            }
+                        });
+                    });
+                    right.appendChild(list);
+                    winContainer.appendChild(panel);
+
+                    var syncWindow = function() {
+                        mirrors.forEach(function(m) {
+                            m.cb.checked = m.core.checked;
+                            m.cb.disabled = m.core.disabled;
+                        });
+                        panel.classList.toggle('d-none', !enableBox.checked);
+                    };
+                    var syncLater = function() {
+                        window.setTimeout(syncWindow, 50);
+                    };
+                    mirrors.forEach(function(m) {
+                        m.core.addEventListener('change', syncLater);
+                    });
+                    var formEl = winContainer.closest('form');
+                    if (formEl) {
+                        formEl.addEventListener('change', syncLater);
+                        formEl.addEventListener('click', syncLater);
+                    }
+                    winSelect.addEventListener('change', function() {
+                        var preset = find(winSelect.value);
+                        if (preset) {
+                            applyGrid(cfg(preset), ['closed']);
+                            say(S.applied.replace('{$a}', preset.name));
+                        }
+                    });
+                    syncWindow();
+                    window.setTimeout(syncWindow, 400);
+                }
 
                 render(data.isnew ? state.defaultRef : '');
                 // A new quiz starts from the teacher's default preset.
