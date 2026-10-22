@@ -19,30 +19,31 @@
  * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define([], function() {
-    return {
-        init: function(notice) {
-            var box = document.createElement('div');
-            box.className = 'alert alert-' + notice.type + ' local-quicktools-reviewnotice';
-            box.setAttribute('role', 'status');
-            var title = document.createElement('strong');
-            title.textContent = notice.title;
-            box.appendChild(title);
-            if (notice.details) {
-                var details = document.createElement('div');
-                details.textContent = notice.details;
-                box.appendChild(details);
-            }
+/**
+ * Show the review window notice on the quiz page.
+ *
+ * @param {Object} notice type (alert style), title and optional details
+ */
+export const init = notice => {
+    const box = document.createElement('div');
+    box.className = 'alert alert-' + notice.type + ' local-quicktools-reviewnotice';
+    box.setAttribute('role', 'status');
+    const title = document.createElement('strong');
+    title.textContent = notice.title;
+    box.appendChild(title);
+    if (notice.details) {
+        const details = document.createElement('div');
+        details.textContent = notice.details;
+        box.appendChild(details);
+    }
 
-            var info = document.querySelector('.quizinfo');
-            if (info && info.parentNode) {
-                info.parentNode.insertBefore(box, info.nextSibling);
-                return;
-            }
-            var main = document.querySelector('[role="main"]');
-            if (main) {
-                main.insertBefore(box, main.firstChild);
-            }
-        }
-    };
-});
+    const info = document.querySelector('.quizinfo');
+    if (info && info.parentNode) {
+        info.parentNode.insertBefore(box, info.nextSibling);
+        return;
+    }
+    const main = document.querySelector('[role="main"]');
+    if (main) {
+        main.insertBefore(box, main.firstChild);
+    }
+};

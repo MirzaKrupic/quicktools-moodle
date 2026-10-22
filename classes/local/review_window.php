@@ -28,28 +28,40 @@
 
 namespace local_quicktools\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 use mod_quiz\question\display_options;
 
 /**
  * Stores windows and applies them to quizzes.
  */
 class review_window {
-    /** @var string[] Quiz columns holding review options. */
-    const FIELDS = ['reviewattempt', 'reviewcorrectness', 'reviewmarks', 'reviewspecificfeedback',
-        'reviewgeneralfeedback', 'reviewrightanswer', 'reviewoverallfeedback'];
-
-    /** @var string[][] Quiz column => [string identifier, component] for the option names students see. */
+    /** @var string[][] Quiz column => [string identifier, component] for the option names students see (all versions). */
     const LABELS = [
         'reviewattempt' => ['theattempt', 'quiz'],
         'reviewcorrectness' => ['whethercorrect', 'question'],
+        'reviewmaxmarks' => ['maxmarks', 'quiz'],
         'reviewmarks' => ['marks', 'quiz'],
         'reviewspecificfeedback' => ['specificfeedback', 'question'],
         'reviewgeneralfeedback' => ['generalfeedback', 'question'],
         'reviewrightanswer' => ['rightanswer', 'question'],
         'reviewoverallfeedback' => ['reviewoverallfeedback', 'quiz'],
     ];
+
+    /**
+     * Quiz columns holding review options on this Moodle version (Moodle 4.4 added "Maximum marks").
+     *
+     * @return string[]
+     */
+    public static function fields(): array {
+        global $DB;
+        static $fields = null;
+        if ($fields === null) {
+            $hasmax = $DB->get_manager()->field_exists('quiz', 'reviewmaxmarks');
+            $fields = array_values(array_filter(array_keys(self::LABELS), function ($column) use ($hasmax) {
+                return $hasmax || $column !== 'reviewmaxmarks';
+            }));
+        }
+        return $fields;
+    }
 
     /**
      * The window record for a quiz, or false.
@@ -70,7 +82,7 @@ class review_window {
      */
     public static function current_bits(\stdClass $quiz): array {
         $bits = [];
-        foreach (self::FIELDS as $field) {
+        foreach (self::fields() as $field) {
             $bits[$field] = ((int) $quiz->$field & display_options::AFTER_CLOSE) ? 1 : 0;
         }
         return $bits;
@@ -120,7 +132,7 @@ class review_window {
         $mask = self::current_bits($quiz);
         if (!$mask['reviewattempt']) {
             // Without "the attempt" nothing else can be shown.
-            $mask = array_fill_keys(self::FIELDS, 0);
+            $mask = array_fill_keys(self::fields(), 0);
         }
 
         if (!$window) {
@@ -154,7 +166,7 @@ class review_window {
         $mask = json_decode($window->mask ?? '', true) ?: [];
 
         $update = new \stdClass();
-        foreach (self::FIELDS as $field) {
+        foreach (self::fields() as $field) {
             $value = (int) $quiz->$field & ~display_options::AFTER_CLOSE;
             if ($state === 'open' && !empty($mask[$field])) {
                 $value |= display_options::AFTER_CLOSE;

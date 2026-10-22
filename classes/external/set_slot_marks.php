@@ -39,7 +39,6 @@ use core_external\external_value;
  * but the grades are recalculated once for the whole batch.
  */
 class set_slot_marks extends external_api {
-
     /**
      * Parameters.
      *
@@ -64,8 +63,10 @@ class set_slot_marks extends external_api {
     public static function execute(int $cmid, array $slotids, float $maxmark): array {
         global $DB;
 
-        $params = self::validate_parameters(self::execute_parameters(),
-            ['cmid' => $cmid, 'slotids' => $slotids, 'maxmark' => $maxmark]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['cmid' => $cmid, 'slotids' => $slotids, 'maxmark' => $maxmark]
+        );
 
         $quizobj = \mod_quiz\quiz_settings::create_for_cmid($params['cmid']);
         self::validate_context($quizobj->get_context());

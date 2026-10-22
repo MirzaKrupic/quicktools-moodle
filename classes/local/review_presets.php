@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Review option presets: built-in ones plus the ones each teacher saves.
@@ -26,18 +27,25 @@
 
 namespace local_quicktools\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Presets storage and built-ins.
  */
 class review_presets {
     /** @var string[] Moments in the grid, in form order. */
     const WHEN = ['during', 'immediately', 'open', 'closed'];
-    /** @var string[] Options in the grid. */
-    const OPTIONS = ['attempt', 'correctness', 'marks', 'specificfeedback', 'generalfeedback', 'rightanswer', 'overallfeedback'];
     /** @var string User preference holding the default preset reference. */
     const PREF = 'local_quicktools_review_default';
+
+    /**
+     * Options in the grid on this Moodle version (4.4 and later also have "Maximum marks").
+     *
+     * @return string[]
+     */
+    public static function options(): array {
+        return array_map(function ($column) {
+            return substr($column, 6);
+        }, review_window::fields());
+    }
 
     /**
      * Build a grid from a list of ticked options per moment.
@@ -49,7 +57,7 @@ class review_presets {
         $grid = [];
         foreach (self::WHEN as $when) {
             $on = $ticked[$when] ?? [];
-            foreach (self::OPTIONS as $option) {
+            foreach (self::options() as $option) {
                 $grid[$when][$option] = ($on === 'all' || in_array($option, $on)) ? 1 : 0;
             }
         }
@@ -103,7 +111,7 @@ class review_presets {
     public static function clean(array $config): array {
         $clean = [];
         foreach (self::WHEN as $when) {
-            foreach (self::OPTIONS as $option) {
+            foreach (self::options() as $option) {
                 $clean[$when][$option] = !empty($config[$when][$option]) ? 1 : 0;
             }
         }
@@ -126,8 +134,10 @@ class review_presets {
         $json = json_encode(self::clean($config));
         $existing = $DB->get_record('local_quicktools_revpreset', ['userid' => $userid, 'name' => $name]);
         if ($existing) {
-            $DB->update_record('local_quicktools_revpreset',
-                (object) ['id' => $existing->id, 'config' => $json, 'timemodified' => time()]);
+            $DB->update_record(
+                'local_quicktools_revpreset',
+                (object) ['id' => $existing->id, 'config' => $json, 'timemodified' => time()]
+            );
         } else {
             $DB->insert_record('local_quicktools_revpreset', (object) ['userid' => $userid, 'name' => $name,
                 'config' => $json, 'timecreated' => time(), 'timemodified' => time()]);
@@ -142,8 +152,10 @@ class review_presets {
      */
     public static function delete(int $userid, int $id): void {
         global $DB;
-        if ($DB->delete_records('local_quicktools_revpreset', ['id' => $id, 'userid' => $userid])
-                && get_user_preferences(self::PREF, '', $userid) === 'u:' . $id) {
+        if (
+            $DB->delete_records('local_quicktools_revpreset', ['id' => $id, 'userid' => $userid])
+                && get_user_preferences(self::PREF, '', $userid) === 'u:' . $id
+        ) {
             unset_user_preference(self::PREF, $userid);
         }
     }

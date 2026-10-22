@@ -20,348 +20,379 @@
  * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notification, Str) {
+import {call as fetchMany} from 'core/ajax';
+import {exception as displayException} from 'core/notification';
+import {get_strings as getStrings} from 'core/str';
 
-    var WHEN = ['during', 'immediately', 'open', 'closed'];
-    var OPTIONS = ['attempt', 'correctness', 'marks', 'specificfeedback', 'generalfeedback', 'rightanswer',
-        'overallfeedback'];
 
-    var box = function(option, when) {
-        return document.getElementById('id_' + option + when);
-    };
+const WHEN = ['during', 'immediately', 'open', 'closed'];
+let OPTIONS = ['attempt', 'correctness', 'maxmarks', 'marks', 'specificfeedback', 'generalfeedback', 'rightanswer',
+    'overallfeedback'];
 
-    var readGrid = function() {
-        var grid = {};
-        WHEN.forEach(function(when) {
-            grid[when] = {};
-            OPTIONS.forEach(function(option) {
-                var el = box(option, when);
-                grid[when][option] = el && el.checked ? 1 : 0;
-            });
+const box = function(option, when) {
+    return document.getElementById('id_' + option + when);
+};
+
+const readGrid = function() {
+    const grid = {};
+    WHEN.forEach(function(when) {
+        grid[when] = {};
+        OPTIONS.forEach(function(option) {
+            const el = box(option, when);
+            grid[when][option] = el && el.checked ? 1 : 0;
         });
-        return grid;
-    };
+    });
+    return grid;
+};
 
-    var applyGrid = function(grid, onlyWhen) {
-        WHEN.forEach(function(when) {
-            if (onlyWhen && onlyWhen.indexOf(when) === -1) {
+const applyGrid = function(grid, onlyWhen) {
+    WHEN.forEach(function(when) {
+        if (onlyWhen && onlyWhen.indexOf(when) === -1) {
+            return;
+        }
+        // "The attempt" first, so Moodle's own enable/disable rules settle before the rest.
+        OPTIONS.forEach(function(option) {
+            const el = box(option, when);
+            const wanted = !!(grid[when] && grid[when][option]);
+            if (el && el.checked !== wanted) {
+                el.checked = wanted;
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+        });
+    });
+};
+
+const el = function(tag, props, children) {
+    const node = document.createElement(tag);
+    Object.keys(props || {}).forEach(function(key) {
+        node[key] = props[key];
+    });
+    (children || []).forEach(function(child) {
+        node.appendChild(child);
+    });
+    return node;
+};
+
+/**
+ * Build the preset bar.
+ *
+ * @param {Object} data isnew, windowmask, presets and default
+ */
+const run = data => {
+    // Moodle 4.4+ adds "Maximum marks"; older versions do not have the box.
+    OPTIONS = OPTIONS.filter(function(option) {
+        return !!box(option, 'during');
+    });
+    const container = document.getElementById('id_reviewoptionshdrcontainer');
+    if (!container || !document.getElementById('id_attemptduring')) {
+        return;
+    }
+    const state = {presets: data.presets, defaultRef: data.default};
+
+    const build = str => {
+        const S = {apply: str[0], choose: str[1], save: str[2], name: str[3], savebtn: str[4], cancel: str[5],
+            del: str[6], delq: str[7], setdefault: str[8], isdefault: str[9], nodefault: str[10],
+            saved: str[11], yours: str[12], builtin: str[13], applied: str[14], hintdate: str[15],
+            hintschedule: str[16], windowshows: str[17], windowpreset: str[18]};
+
+        const bar = el('div', {className: 'd-flex flex-wrap align-items-center mb-2 local-quicktools-presets'});
+        const label = el('label', {htmlFor: 'local-quicktools-preset', className: 'mr-2 mb-2', textContent: S.apply});
+        const select = el('select', {id: 'local-quicktools-preset', className: 'custom-select mr-2 mb-2'});
+        select.style.width = 'auto';
+        select.style.maxWidth = '30rem';
+        const saveBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', textContent: S.save});
+        const defBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', disabled: true});
+        const delBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2 d-none', textContent: S.del});
+        const status = el('span', {className: 'text-muted mb-2', role: 'status'});
+
+        const nameInput = el('input', {type: 'text', className: 'form-control mr-2', maxLength: 100, placeholder: S.name});
+        nameInput.setAttribute('aria-label', S.name);
+        const nameOk = el('button', {type: 'button', className: 'btn btn-primary mr-2', textContent: S.savebtn});
+        const nameCancel = el('button', {type: 'button', className: 'btn btn-secondary', textContent: S.cancel});
+        const namePanel = el('div', {className: 'align-items-center w-100 mt-2 d-none'}, [nameInput, nameOk, nameCancel]);
+        const showName = function(show) {
+            namePanel.classList.toggle('d-none', !show);
+            namePanel.classList.toggle('d-flex', show);
+        };
+
+        const confirmPanel = el('div', {className: 'd-none align-items-center w-100 mt-2'});
+
+        [label, select, saveBtn, defBtn, delBtn, status, namePanel, confirmPanel].forEach(function(node) {
+            bar.appendChild(node);
+        });
+        container.insertBefore(bar, container.firstChild);
+
+        // Explain why "After the quiz is closed" is greyed out (Moodle locks it until there is a close date).
+        const hint = el('div', {className: 'text-muted small mb-3 d-none', role: 'note'});
+        container.insertBefore(hint, bar.nextSibling);
+        const refreshHint = function() {
+            const closed = document.getElementById('id_attemptclosed');
+            const schedule = document.getElementById('id_local_qrw_enabled');
+            const locked = !!closed && closed.disabled;
+            const scheduled = !!schedule && schedule.checked;
+            hint.textContent = locked ? S.hintdate : S.hintschedule;
+            hint.classList.toggle('d-none', !locked && !scheduled);
+        };
+        const form = container.closest('form');
+        if (form) {
+            ['change', 'click'].forEach(function(type) {
+                form.addEventListener(type, function() {
+                    window.setTimeout(refreshHint, 50);
+                });
+            });
+        }
+        window.setTimeout(refreshHint, 300);
+        if (data.windowmask) {
+            // Show the teacher's saved choice for the review window (the quiz itself may be hiding it right now).
+            OPTIONS.forEach(function(option) {
+                const cell = box(option, 'closed');
+                const wanted = !!data.windowmask['review' + option];
+                if (cell && cell.checked !== wanted) {
+                    cell.checked = wanted;
+                    cell.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+            });
+        }
+
+        const find = function(ref) {
+            return state.presets.filter(function(p) {
+                return p.ref === ref;
+            })[0];
+        };
+        const cfg = function(preset) {
+            return typeof preset.config === 'string' ? JSON.parse(preset.config) : preset.config;
+        };
+        const say = function(text) {
+            status.textContent = text || '';
+        };
+
+        let winSelect = null;
+        const fill = function(target, selected) {
+            target.textContent = '';
+            target.appendChild(el('option', {value: '', textContent: S.choose}));
+            [[S.builtin, true], [S.yours, false]].forEach(function(group) {
+                const items = state.presets.filter(function(p) {
+                    return !!p.builtin === group[1];
+                });
+                if (!items.length) {
+                    return;
+                }
+                const optgroup = el('optgroup', {label: group[0]});
+                items.forEach(function(p) {
+                    optgroup.appendChild(el('option', {value: p.ref,
+                        textContent: p.name + (p.ref === state.defaultRef ? ' ★' : '')}));
+                });
+                target.appendChild(optgroup);
+            });
+            target.value = find(selected) ? selected : '';
+        };
+        const render = function(selected) {
+            fill(select, selected);
+            if (winSelect) {
+                fill(winSelect, '');
+            }
+            refreshButtons();
+        };
+        const refreshButtons = function() {
+            const ref = select.value;
+            const preset = find(ref);
+            defBtn.disabled = !preset;
+            defBtn.textContent = (preset && ref === state.defaultRef) ? S.isdefault + ' — ' + S.nodefault : S.setdefault;
+            delBtn.classList.toggle('d-none', !preset || !!preset.builtin);
+        };
+        const update = function(result, selected) {
+            state.presets = result.presets;
+            state.defaultRef = result.default;
+            render(selected);
+        };
+        const call = function(methodname, args) {
+            return fetchMany([{methodname: methodname, args: args}])[0];
+        };
+
+        select.addEventListener('change', function() {
+            const preset = find(select.value);
+            if (preset) {
+                applyGrid(cfg(preset));
+                say(S.applied.replace('{$a}', preset.name));
+            }
+            refreshButtons();
+        });
+
+        saveBtn.addEventListener('click', function() {
+            showName(true);
+            nameInput.focus();
+        });
+        nameCancel.addEventListener('click', function() {
+            showName(false);
+        });
+        const doSave = function() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                nameInput.focus();
                 return;
             }
-            // "The attempt" first, so Moodle's own enable/disable rules settle before the rest.
-            OPTIONS.forEach(function(option) {
-                var el = box(option, when);
-                var wanted = !!(grid[when] && grid[when][option]);
-                if (el && el.checked !== wanted) {
-                    el.checked = wanted;
-                    el.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            });
+            call('local_quicktools_save_reviewpreset', {name: name, config: JSON.stringify(readGrid())})
+            .then(function(result) {
+                const saved = result.presets.filter(function(p) {
+                    return !p.builtin && p.name === name;
+                })[0];
+                update(result, saved ? saved.ref : '');
+                showName(false);
+                nameInput.value = '';
+                say(S.saved);
+                return;
+            }).catch(displayException);
+        };
+        nameOk.addEventListener('click', doSave);
+        nameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doSave();
+            } else if (e.key === 'Escape') {
+                showName(false);
+            }
         });
-    };
 
-    var el = function(tag, props, children) {
-        var node = document.createElement(tag);
-        Object.keys(props || {}).forEach(function(key) {
-            node[key] = props[key];
+        defBtn.addEventListener('click', function() {
+            const ref = select.value;
+            call('local_quicktools_default_reviewpreset', {ref: ref === state.defaultRef ? '' : ref})
+            .then(function(result) {
+                update(result, ref);
+                return;
+            }).catch(displayException);
         });
-        (children || []).forEach(function(child) {
-            node.appendChild(child);
-        });
-        return node;
-    };
 
-    return {
-        init: function(data) {
-            var container = document.getElementById('id_reviewoptionshdrcontainer');
-            if (!container || !document.getElementById('id_attemptduring')) {
+        delBtn.addEventListener('click', function() {
+            const preset = find(select.value);
+            if (!preset) {
                 return;
             }
-            var state = {presets: data.presets, defaultRef: data.default};
+            confirmPanel.textContent = '';
+            const yes = el('button', {type: 'button', className: 'btn btn-danger mr-2', textContent: S.del});
+            const no = el('button', {type: 'button', className: 'btn btn-secondary', textContent: S.cancel});
+            confirmPanel.appendChild(el('span', {className: 'mr-3', textContent: S.delq.replace('{$a}', preset.name)}));
+            confirmPanel.appendChild(yes);
+            confirmPanel.appendChild(no);
+            confirmPanel.classList.remove('d-none');
+            confirmPanel.classList.add('d-flex');
+            const close = function() {
+                confirmPanel.classList.add('d-none');
+                confirmPanel.classList.remove('d-flex');
+            };
+            no.addEventListener('click', close);
+            yes.addEventListener('click', function() {
+                call('local_quicktools_delete_reviewpreset', {id: parseInt(preset.ref.slice(2), 10)})
+                .then(function(result) {
+                    close();
+                    update(result, '');
+                    return;
+                }).catch(displayException);
+            });
+        });
 
-            Str.get_strings([
-                'presetapply', 'presetchoose', 'presetsave', 'presetname', 'presetsavebtn', 'presetcancel',
-                'presetdelete', 'presetdeleteq', 'presetsetdefault', 'presetisdefault', 'presetnodefault',
-                'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied', 'hintclosedate', 'hintschedule', 'windowshows', 'windowpreset'
-            ].map(function(key) {
-                return {key: key, component: 'local_quicktools'};
-            })).then(function(str) {
-                var S = {apply: str[0], choose: str[1], save: str[2], name: str[3], savebtn: str[4], cancel: str[5],
-                    del: str[6], delq: str[7], setdefault: str[8], isdefault: str[9], nodefault: str[10],
-                    saved: str[11], yours: str[12], builtin: str[13], applied: str[14], hintdate: str[15],
-                    hintschedule: str[16], windowshows: str[17], windowpreset: str[18]};
-
-                var bar = el('div', {className: 'd-flex flex-wrap align-items-center mb-2 local-quicktools-presets'});
-                var label = el('label', {htmlFor: 'local-quicktools-preset', className: 'mr-2 mb-2', textContent: S.apply});
-                var select = el('select', {id: 'local-quicktools-preset', className: 'custom-select mr-2 mb-2'});
-                select.style.width = 'auto';
-                select.style.maxWidth = '30rem';
-                var saveBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', textContent: S.save});
-                var defBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2', disabled: true});
-                var delBtn = el('button', {type: 'button', className: 'btn btn-secondary mr-2 mb-2 d-none', textContent: S.del});
-                var status = el('span', {className: 'text-muted mb-2', role: 'status'});
-
-                var nameInput = el('input', {type: 'text', className: 'form-control mr-2', maxLength: 100, placeholder: S.name});
-                nameInput.setAttribute('aria-label', S.name);
-                var nameOk = el('button', {type: 'button', className: 'btn btn-primary mr-2', textContent: S.savebtn});
-                var nameCancel = el('button', {type: 'button', className: 'btn btn-secondary', textContent: S.cancel});
-                var namePanel = el('div', {className: 'align-items-center w-100 mt-2 d-none'}, [nameInput, nameOk, nameCancel]);
-                var showName = function(show) {
-                    namePanel.classList.toggle('d-none', !show);
-                    namePanel.classList.toggle('d-flex', show);
-                };
-
-                var confirmPanel = el('div', {className: 'd-none align-items-center w-100 mt-2'});
-
-                [label, select, saveBtn, defBtn, delBtn, status, namePanel, confirmPanel].forEach(function(node) {
-                    bar.appendChild(node);
-                });
-                container.insertBefore(bar, container.firstChild);
-
-                // Explain why "After the quiz is closed" is greyed out (Moodle locks it until there is a close date).
-                var hint = el('div', {className: 'text-muted small mb-3 d-none', role: 'note'});
-                container.insertBefore(hint, bar.nextSibling);
-                var refreshHint = function() {
-                    var closed = document.getElementById('id_attemptclosed');
-                    var schedule = document.getElementById('id_local_qrw_enabled');
-                    var locked = !!closed && closed.disabled;
-                    var scheduled = !!schedule && schedule.checked;
-                    hint.textContent = locked ? S.hintdate : S.hintschedule;
-                    hint.classList.toggle('d-none', !locked && !scheduled);
-                };
-                var form = container.closest('form');
-                if (form) {
-                    ['change', 'click'].forEach(function(type) {
-                        form.addEventListener(type, function() {
-                            window.setTimeout(refreshHint, 50);
-                        });
-                    });
+        // The same choices inside the Review window section, kept in step with the real column above.
+        const winContainer = document.getElementById('id_local_qrw_hdrcontainer');
+        const enableBox = document.getElementById('id_local_qrw_enabled');
+        if (winContainer && enableBox) {
+            const panel = el('div', {className: 'local-quicktools-windowpanel row mt-2 mb-3'});
+            const right = el('div', {className: 'col-md-9'});
+            panel.appendChild(el('div', {className: 'col-md-3 col-form-label', textContent: S.windowshows}));
+            panel.appendChild(right);
+            const row = el('div', {className: 'd-flex flex-wrap align-items-center mb-2'});
+            row.appendChild(el('label', {htmlFor: 'local-quicktools-winpreset', className: 'mr-2 mb-0',
+                textContent: S.windowpreset}));
+            winSelect = el('select', {id: 'local-quicktools-winpreset', className: 'custom-select'});
+            winSelect.style.width = 'auto';
+            winSelect.style.maxWidth = '30rem';
+            row.appendChild(winSelect);
+            right.appendChild(row);
+            const list = el('div', {className: 'd-flex flex-wrap'});
+            const mirrors = [];
+            OPTIONS.forEach(function(option) {
+                const core = box(option, 'closed');
+                if (!core) {
+                    return;
                 }
-                window.setTimeout(refreshHint, 300);
-                if (data.windowmask) {
-                    // Show the teacher's saved choice for the review window (the quiz itself may be hiding it right now).
-                    OPTIONS.forEach(function(option) {
-                        var cell = box(option, 'closed');
-                        var wanted = !!data.windowmask['review' + option];
-                        if (cell && cell.checked !== wanted) {
-                            cell.checked = wanted;
-                            cell.dispatchEvent(new Event('change', {bubbles: true}));
-                        }
-                    });
+                const item = core.closest('.review_option_item') || core.parentElement;
+                const coreLabel = document.querySelector('label[for="id_' + option + 'closed"]') || item;
+                const cb = el('input', {type: 'checkbox', id: 'local-quicktools-win-' + option, className: 'mr-1'});
+                const text = el('label', {htmlFor: cb.id, className: 'mb-0',
+                    textContent: coreLabel ? coreLabel.textContent.trim() : option});
+                list.appendChild(el('div', {className: 'd-flex align-items-center mr-4 mb-1'}, [cb, text]));
+                mirrors.push({cb: cb, core: core});
+                cb.addEventListener('change', function() {
+                    if (core.checked !== cb.checked) {
+                        core.checked = cb.checked;
+                        core.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                });
+            });
+            right.appendChild(list);
+            winContainer.appendChild(panel);
+
+            const syncWindow = function() {
+                mirrors.forEach(function(m) {
+                    m.cb.checked = m.core.checked;
+                    m.cb.disabled = m.core.disabled;
+                });
+                panel.classList.toggle('d-none', !enableBox.checked);
+            };
+            const syncLater = function() {
+                window.setTimeout(syncWindow, 50);
+            };
+            mirrors.forEach(function(m) {
+                m.core.addEventListener('change', syncLater);
+            });
+            const formEl = winContainer.closest('form');
+            if (formEl) {
+                formEl.addEventListener('change', syncLater);
+                formEl.addEventListener('click', syncLater);
+            }
+            winSelect.addEventListener('change', function() {
+                const preset = find(winSelect.value);
+                if (preset) {
+                    applyGrid(cfg(preset), ['closed']);
+                    say(S.applied.replace('{$a}', preset.name));
                 }
+            });
+            syncWindow();
+            window.setTimeout(syncWindow, 400);
+        }
 
-                var find = function(ref) {
-                    return state.presets.filter(function(p) {
-                        return p.ref === ref;
-                    })[0];
-                };
-                var cfg = function(preset) {
-                    return typeof preset.config === 'string' ? JSON.parse(preset.config) : preset.config;
-                };
-                var say = function(text) {
-                    status.textContent = text || '';
-                };
-
-                var winSelect = null;
-                var fill = function(target, selected) {
-                    target.textContent = '';
-                    target.appendChild(el('option', {value: '', textContent: S.choose}));
-                    [[S.builtin, true], [S.yours, false]].forEach(function(group) {
-                        var items = state.presets.filter(function(p) {
-                            return !!p.builtin === group[1];
-                        });
-                        if (!items.length) {
-                            return;
-                        }
-                        var optgroup = el('optgroup', {label: group[0]});
-                        items.forEach(function(p) {
-                            optgroup.appendChild(el('option', {value: p.ref,
-                                textContent: p.name + (p.ref === state.defaultRef ? ' ★' : '')}));
-                        });
-                        target.appendChild(optgroup);
-                    });
-                    target.value = find(selected) ? selected : '';
-                };
-                var render = function(selected) {
-                    fill(select, selected);
-                    if (winSelect) {
-                        fill(winSelect, '');
-                    }
-                    refreshButtons();
-                };
-                var refreshButtons = function() {
-                    var ref = select.value;
-                    var preset = find(ref);
-                    defBtn.disabled = !preset;
-                    defBtn.textContent = (preset && ref === state.defaultRef) ? S.isdefault + ' — ' + S.nodefault : S.setdefault;
-                    delBtn.classList.toggle('d-none', !preset || !!preset.builtin);
-                };
-                var update = function(result, selected) {
-                    state.presets = result.presets;
-                    state.defaultRef = result.default;
-                    render(selected);
-                };
-                var call = function(methodname, args) {
-                    return Ajax.call([{methodname: methodname, args: args}])[0];
-                };
-
-                select.addEventListener('change', function() {
-                    var preset = find(select.value);
-                    if (preset) {
-                        applyGrid(cfg(preset));
-                        say(S.applied.replace('{$a}', preset.name));
-                    }
-                    refreshButtons();
-                });
-
-                saveBtn.addEventListener('click', function() {
-                    showName(true);
-                    nameInput.focus();
-                });
-                nameCancel.addEventListener('click', function() {
-                    showName(false);
-                });
-                var doSave = function() {
-                    var name = nameInput.value.trim();
-                    if (!name) {
-                        nameInput.focus();
-                        return;
-                    }
-                    call('local_quicktools_save_reviewpreset', {name: name, config: JSON.stringify(readGrid())})
-                    .then(function(result) {
-                        var saved = result.presets.filter(function(p) {
-                            return !p.builtin && p.name === name;
-                        })[0];
-                        update(result, saved ? saved.ref : '');
-                        showName(false);
-                        nameInput.value = '';
-                        say(S.saved);
-                        return;
-                    }).catch(Notification.exception);
-                };
-                nameOk.addEventListener('click', doSave);
-                nameInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        doSave();
-                    } else if (e.key === 'Escape') {
-                        showName(false);
-                    }
-                });
-
-                defBtn.addEventListener('click', function() {
-                    var ref = select.value;
-                    call('local_quicktools_default_reviewpreset', {ref: ref === state.defaultRef ? '' : ref})
-                    .then(function(result) {
-                        update(result, ref);
-                        return;
-                    }).catch(Notification.exception);
-                });
-
-                delBtn.addEventListener('click', function() {
-                    var preset = find(select.value);
-                    if (!preset) {
-                        return;
-                    }
-                    confirmPanel.textContent = '';
-                    var yes = el('button', {type: 'button', className: 'btn btn-danger mr-2', textContent: S.del});
-                    var no = el('button', {type: 'button', className: 'btn btn-secondary', textContent: S.cancel});
-                    confirmPanel.appendChild(el('span', {className: 'mr-3', textContent: S.delq.replace('{$a}', preset.name)}));
-                    confirmPanel.appendChild(yes);
-                    confirmPanel.appendChild(no);
-                    confirmPanel.classList.remove('d-none');
-                    confirmPanel.classList.add('d-flex');
-                    var close = function() {
-                        confirmPanel.classList.add('d-none');
-                        confirmPanel.classList.remove('d-flex');
-                    };
-                    no.addEventListener('click', close);
-                    yes.addEventListener('click', function() {
-                        call('local_quicktools_delete_reviewpreset', {id: parseInt(preset.ref.slice(2), 10)})
-                        .then(function(result) {
-                            close();
-                            update(result, '');
-                            return;
-                        }).catch(Notification.exception);
-                    });
-                });
-
-                // The same choices inside the Review window section, kept in step with the real column above.
-                var winContainer = document.getElementById('id_local_qrw_hdrcontainer');
-                var enableBox = document.getElementById('id_local_qrw_enabled');
-                if (winContainer && enableBox) {
-                    var panel = el('div', {className: 'local-quicktools-windowpanel row mt-2 mb-3'});
-                    var right = el('div', {className: 'col-md-9'});
-                    panel.appendChild(el('div', {className: 'col-md-3 col-form-label', textContent: S.windowshows}));
-                    panel.appendChild(right);
-                    var row = el('div', {className: 'd-flex flex-wrap align-items-center mb-2'});
-                    row.appendChild(el('label', {htmlFor: 'local-quicktools-winpreset', className: 'mr-2 mb-0',
-                        textContent: S.windowpreset}));
-                    winSelect = el('select', {id: 'local-quicktools-winpreset', className: 'custom-select'});
-                    winSelect.style.width = 'auto';
-                    winSelect.style.maxWidth = '30rem';
-                    row.appendChild(winSelect);
-                    right.appendChild(row);
-                    var list = el('div', {className: 'd-flex flex-wrap'});
-                    var mirrors = [];
-                    OPTIONS.forEach(function(option) {
-                        var core = box(option, 'closed');
-                        if (!core) {
-                            return;
-                        }
-                        var item = core.closest('.review_option_item') || core.parentElement;
-                        var coreLabel = document.querySelector('label[for="id_' + option + 'closed"]') || item;
-                        var cb = el('input', {type: 'checkbox', id: 'local-quicktools-win-' + option, className: 'mr-1'});
-                        var text = el('label', {htmlFor: cb.id, className: 'mb-0',
-                            textContent: coreLabel ? coreLabel.textContent.trim() : option});
-                        list.appendChild(el('div', {className: 'd-flex align-items-center mr-4 mb-1'}, [cb, text]));
-                        mirrors.push({cb: cb, core: core});
-                        cb.addEventListener('change', function() {
-                            if (core.checked !== cb.checked) {
-                                core.checked = cb.checked;
-                                core.dispatchEvent(new Event('change', {bubbles: true}));
-                            }
-                        });
-                    });
-                    right.appendChild(list);
-                    winContainer.appendChild(panel);
-
-                    var syncWindow = function() {
-                        mirrors.forEach(function(m) {
-                            m.cb.checked = m.core.checked;
-                            m.cb.disabled = m.core.disabled;
-                        });
-                        panel.classList.toggle('d-none', !enableBox.checked);
-                    };
-                    var syncLater = function() {
-                        window.setTimeout(syncWindow, 50);
-                    };
-                    mirrors.forEach(function(m) {
-                        m.core.addEventListener('change', syncLater);
-                    });
-                    var formEl = winContainer.closest('form');
-                    if (formEl) {
-                        formEl.addEventListener('change', syncLater);
-                        formEl.addEventListener('click', syncLater);
-                    }
-                    winSelect.addEventListener('change', function() {
-                        var preset = find(winSelect.value);
-                        if (preset) {
-                            applyGrid(cfg(preset), ['closed']);
-                            say(S.applied.replace('{$a}', preset.name));
-                        }
-                    });
-                    syncWindow();
-                    window.setTimeout(syncWindow, 400);
-                }
-
-                render(data.isnew ? state.defaultRef : '');
-                // A new quiz starts from the teacher's default preset.
-                if (data.isnew && find(state.defaultRef)) {
-                    applyGrid(cfg(find(state.defaultRef)));
-                    say(S.applied.replace('{$a}', find(state.defaultRef).name));
-                }
-                return;
-            }).catch(Notification.exception);
+        render(data.isnew ? state.defaultRef : '');
+        // A new quiz starts from the teacher's default preset.
+        if (data.isnew && find(state.defaultRef)) {
+            applyGrid(cfg(find(state.defaultRef)));
+            say(S.applied.replace('{$a}', find(state.defaultRef).name));
         }
     };
-});
+
+    getStrings([
+        'presetapply', 'presetchoose', 'presetsave', 'presetname', 'presetsavebtn', 'presetcancel',
+        'presetdelete', 'presetdeleteq', 'presetsetdefault', 'presetisdefault', 'presetnodefault',
+        'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied', 'hintclosedate', 'hintschedule', 'windowshows',
+        'windowpreset'
+    ].map(function(key) {
+        return {key: key, component: 'local_quicktools'};
+    })).then(str => {
+        build(str);
+        return str;
+    }).catch(displayException);
+};
+
+/**
+ * Load the presets, then build the preset bar.
+ *
+ * @param {Object} data isnew and windowmask
+ */
+export const init = data => {
+    if (!document.getElementById('id_reviewoptionshdrcontainer') || !document.getElementById('id_attemptduring')) {
+        return;
+    }
+    fetchMany([{methodname: 'local_quicktools_list_reviewpresets', args: {}}])[0].then(function(listing) {
+        data.presets = listing.presets;
+        data.default = listing.default;
+        run(data);
+        return;
+    }).catch(displayException);
+};

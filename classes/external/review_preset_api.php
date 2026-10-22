@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Web services behind the review preset bar on the quiz settings page.
@@ -22,8 +23,6 @@
  */
 
 namespace local_quicktools\external;
-
-defined('MOODLE_INTERNAL') || die();
 
 use core_external\external_api;
 use core_external\external_function_parameters;
@@ -36,7 +35,6 @@ use local_quicktools\local\review_presets;
  * Save, delete and default-select review presets. Presets belong to the calling teacher.
  */
 class review_preset_api extends external_api {
-
     /**
      * Only people who can manage quizzes somewhere may use presets.
      */
@@ -78,6 +76,34 @@ class review_preset_api extends external_api {
             $preset['config'] = json_encode($preset['config']);
         }
         return $page;
+    }
+
+    /**
+     * Parameters for list.
+     *
+     * @return external_function_parameters
+     */
+    public static function list_parameters(): external_function_parameters {
+        return new external_function_parameters([]);
+    }
+
+    /**
+     * The built-in presets and the teacher's own.
+     *
+     * @return array
+     */
+    public static function list(): array {
+        self::validate_parameters(self::list_parameters(), []);
+        return self::listing(self::check_access());
+    }
+
+    /**
+     * Return structure for list.
+     *
+     * @return external_single_structure
+     */
+    public static function list_returns(): external_single_structure {
+        return self::returns_structure();
     }
 
     /**

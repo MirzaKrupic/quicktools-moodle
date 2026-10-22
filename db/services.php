@@ -32,6 +32,13 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'mod/quiz:manage',
     ],
+    'local_quicktools_list_reviewpresets' => [
+        'classname' => \local_quicktools\external\review_preset_api::class,
+        'methodname' => 'list',
+        'description' => 'List the built-in and the user\'s own quiz review option presets.',
+        'type' => 'read',
+        'ajax' => true,
+    ],
     'local_quicktools_save_reviewpreset' => [
         'classname' => \local_quicktools\external\review_preset_api::class,
         'methodname' => 'save',

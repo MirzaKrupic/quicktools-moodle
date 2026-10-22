@@ -20,5 +20,21 @@ Small quality-of-life fixes for everyday course and quiz work.
 
 Bulk move/hide of sections and activities is not included: Moodle has a built-in *Bulk edit* mode.
 
-Works on Moodle 4.2+ (footer callback and `coursemodule_*` callbacks in `lib.php`; hook in `db/hooks.php` for 4.4+).
-The JavaScript in `amd/build` is a plain copy of `amd/src` (no build step needed).
+## Compatibility
+
+Moodle 4.2 to 4.5 (tested on 4.2.11 and 4.5.15). The footer callback in `lib.php` serves 4.2 and 4.3;
+`db/hooks.php` serves 4.4 and later.
+
+## Development
+
+- JavaScript source is in `amd/src` (ES modules); build with `npx grunt amd` from a Moodle checkout.
+- Tests: `vendor/bin/phpunit --testsuite local_quicktools_testsuite` (PHPUnit environment required).
+- Code style: `phpcs --standard=moodle`.
+
+## Notes
+
+- Uninstalling restores the quiz review options that a closed review window had hidden.
+- Backing up, restoring or duplicating a quiz keeps its review window.
+- Saved presets are personal data and are covered by Moodle's privacy API.
+
+Licence: GNU GPL v3 or later (see `LICENSE`).

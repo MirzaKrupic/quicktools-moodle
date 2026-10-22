@@ -24,8 +24,6 @@
 
 namespace local_quicktools\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_quicktools\local\review_window;
 
 /**

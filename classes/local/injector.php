@@ -24,8 +24,6 @@
 
 namespace local_quicktools\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Decides which tools apply to the current page.
  */
@@ -61,7 +59,8 @@ class injector {
         // Review option presets on the quiz settings form.
         if ($PAGE->pagetype === 'mod-quiz-mod' && has_capability('moodle/course:manageactivities', $PAGE->context)) {
             $isnew = optional_param('add', '', PARAM_ALPHANUMEXT) === 'quiz';
-            $data = review_presets::for_page((int) $USER->id) + ['isnew' => $isnew, 'windowmask' => null];
+            // Only small data goes in the page itself; the presets are fetched by the script.
+            $data = ['isnew' => $isnew, 'windowmask' => null];
             // A quiz with a review schedule shows the saved choice, not what is hidden at this moment.
             $cmid = optional_param('update', 0, PARAM_INT);
             $quizid = $cmid ? $DB->get_field('course_modules', 'instance', ['id' => $cmid]) : 0;

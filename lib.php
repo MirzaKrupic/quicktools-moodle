@@ -22,8 +22,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_quicktools\local\review_window;
 
 /**
@@ -49,10 +47,18 @@ function local_quicktools_coursemodule_standard_elements($formwrapper, $mform) {
     $mform->addElement('header', 'local_qrw_hdr', get_string('windowheading', 'local_quicktools'));
     $mform->addElement('advcheckbox', 'local_qrw_enabled', get_string('enablewindow', 'local_quicktools'));
     $mform->addHelpButton('local_qrw_enabled', 'enablewindow', 'local_quicktools');
-    $mform->addElement('date_time_selector', 'local_qrw_open', get_string('reviewsopen', 'local_quicktools'),
-        ['optional' => true]);
-    $mform->addElement('date_time_selector', 'local_qrw_close', get_string('reviewsclose', 'local_quicktools'),
-        ['optional' => true]);
+    $mform->addElement(
+        'date_time_selector',
+        'local_qrw_open',
+        get_string('reviewsopen', 'local_quicktools'),
+        ['optional' => true]
+    );
+    $mform->addElement(
+        'date_time_selector',
+        'local_qrw_close',
+        get_string('reviewsclose', 'local_quicktools'),
+        ['optional' => true]
+    );
     $mform->hideIf('local_qrw_open', 'local_qrw_enabled', 'notchecked');
     $mform->hideIf('local_qrw_close', 'local_qrw_enabled', 'notchecked');
 
@@ -76,8 +82,10 @@ function local_quicktools_coursemodule_validation($formwrapper, $data) {
     if (!empty($data['local_qrw_enabled']) && empty($data['timeclose'])) {
         $errors['local_qrw_enabled'] = get_string('needclosedate', 'local_quicktools');
     }
-    if (!empty($data['local_qrw_enabled']) && !empty($data['local_qrw_open']) && !empty($data['local_qrw_close'])
-            && $data['local_qrw_close'] <= $data['local_qrw_open']) {
+    if (
+        !empty($data['local_qrw_enabled']) && !empty($data['local_qrw_open']) && !empty($data['local_qrw_close'])
+            && $data['local_qrw_close'] <= $data['local_qrw_open']
+    ) {
         $errors['local_qrw_close'] = get_string('closebeforeopen', 'local_quicktools');
     }
     return $errors;
@@ -94,7 +102,11 @@ function local_quicktools_coursemodule_edit_post_actions($data, $course) {
     if (empty($data->modulename) || $data->modulename !== 'quiz' || empty($data->instance)) {
         return $data;
     }
-    review_window::save((int) $data->instance, !empty($data->local_qrw_enabled),
-        (int) ($data->local_qrw_open ?? 0), (int) ($data->local_qrw_close ?? 0));
+    review_window::save(
+        (int) $data->instance,
+        !empty($data->local_qrw_enabled),
+        (int) ($data->local_qrw_open ?? 0),
+        (int) ($data->local_qrw_close ?? 0)
+    );
     return $data;
 }
