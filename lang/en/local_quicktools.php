@@ -32,6 +32,8 @@ $string['enablewindow_help'] = 'Moodle\'s "After the quiz is closed" review opti
 While a schedule is on, Moodle\'s own "After the quiz is closed" boxes are controlled by the schedule and cannot be edited. Turn the schedule off to get your chosen options back there.
 
 Reviews only apply once the quiz has closed, so the quiz needs a close date. Changes take effect within a minute.';
+$string['hintclosedate'] = 'The "After the quiz is closed" column is locked until the quiz has a close date. Enable "Close the quiz" in the Timing section to use it.';
+$string['hintschedule'] = 'The "After the quiz is closed" column is controlled by the Review window schedule below. Choose what students can see there.';
 $string['marksfield'] = 'Marks for the selected questions';
 $string['marksinvalid'] = 'Enter a mark of 0 or more.';
 $string['marksupdated'] = 'Marks updated for {$a} questions. Reloading…';

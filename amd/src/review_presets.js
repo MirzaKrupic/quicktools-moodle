@@ -78,13 +78,14 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
             Str.get_strings([
                 'presetapply', 'presetchoose', 'presetsave', 'presetname', 'presetsavebtn', 'presetcancel',
                 'presetdelete', 'presetdeleteq', 'presetsetdefault', 'presetisdefault', 'presetnodefault',
-                'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied'
+                'presetsaved', 'presetyours', 'presetbuiltin', 'presetapplied', 'hintclosedate', 'hintschedule'
             ].map(function(key) {
                 return {key: key, component: 'local_quicktools'};
             })).then(function(str) {
                 var S = {apply: str[0], choose: str[1], save: str[2], name: str[3], savebtn: str[4], cancel: str[5],
                     del: str[6], delq: str[7], setdefault: str[8], isdefault: str[9], nodefault: str[10],
-                    saved: str[11], yours: str[12], builtin: str[13], applied: str[14]};
+                    saved: str[11], yours: str[12], builtin: str[13], applied: str[14], hintdate: str[15],
+                    hintschedule: str[16]};
 
                 var bar = el('div', {className: 'd-flex flex-wrap align-items-center mb-3 local-quicktools-presets'});
                 var label = el('label', {htmlFor: 'local-quicktools-preset', className: 'mr-2 mb-0', textContent: S.apply});
@@ -110,6 +111,26 @@ define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notificati
                     bar.appendChild(node);
                 });
                 container.insertBefore(bar, container.firstChild);
+
+                // Explain why "After the quiz is closed" is greyed out (Moodle locks it until there is a close date).
+                var hint = el('div', {className: 'text-muted small mb-3 d-none', role: 'note'});
+                container.insertBefore(hint, bar.nextSibling);
+                var refreshHint = function() {
+                    var closed = document.getElementById('id_attemptclosed');
+                    var schedule = document.getElementById('id_local_qrw_enabled');
+                    var locked = !!closed && closed.disabled;
+                    hint.textContent = (schedule && schedule.checked) ? S.hintschedule : S.hintdate;
+                    hint.classList.toggle('d-none', !locked);
+                };
+                var form = container.closest('form');
+                if (form) {
+                    ['change', 'click'].forEach(function(type) {
+                        form.addEventListener(type, function() {
+                            window.setTimeout(refreshHint, 50);
+                        });
+                    });
+                }
+                window.setTimeout(refreshHint, 300);
 
                 var find = function(ref) {
                     return state.presets.filter(function(p) {
