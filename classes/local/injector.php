@@ -46,7 +46,7 @@ class injector {
      * Add the JavaScript for the current page, if any tool applies.
      */
     public static function inject(): void {
-        global $PAGE;
+        global $PAGE, $USER;
 
         if (self::$done || !isloggedin() || isguestuser()) {
             return;
@@ -56,6 +56,13 @@ class injector {
         // Keep the scroll position when the edit mode switch is used.
         if ($PAGE->user_allowed_editing()) {
             $PAGE->requires->js_call_amd('local_quicktools/editmode_scroll', 'init');
+        }
+
+        // Review option presets on the quiz settings form.
+        if ($PAGE->pagetype === 'mod-quiz-mod' && has_capability('moodle/course:manageactivities', $PAGE->context)) {
+            $isnew = optional_param('add', '', PARAM_ALPHANUMEXT) === 'quiz';
+            $PAGE->requires->js_call_amd('local_quicktools/review_presets', 'init',
+                [review_presets::for_page((int) $USER->id) + ['isnew' => $isnew]]);
         }
 
         // Bulk marks on the quiz Questions page.

@@ -13,6 +13,11 @@ Small quality-of-life fixes for everyday course and quiz work.
   (within about a minute). While a schedule is on, Moodle's own "After the quiz is closed" boxes are driven by it;
   turning the schedule off leaves your chosen options there. The quiz needs a close date.
 
+- **Review option presets.** On the quiz settings page, a bar at the top of *Review options* applies a whole preset
+  (all four columns, 28 boxes) in one click. Built-in presets: Moodle default, Practice, Exam (everything after close),
+  Exam (attempt and marks after close), No review. *Save current options as a preset…* stores your own under a name,
+  and *Use for new quizzes* makes one the default that new quizzes start from. Presets are per teacher.
+
 Bulk move/hide of sections and activities is not included: Moodle has a built-in *Bulk edit* mode.
 
 Works on Moodle 4.2+ (footer callback and `coursemodule_*` callbacks in `lib.php`; hook in `db/hooks.php` for 4.4+).

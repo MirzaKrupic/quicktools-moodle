@@ -32,4 +32,25 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'mod/quiz:manage',
     ],
+    'local_quicktools_save_reviewpreset' => [
+        'classname' => \local_quicktools\external\review_preset_api::class,
+        'methodname' => 'save',
+        'description' => 'Save the quiz review options grid as a named preset.',
+        'type' => 'write',
+        'ajax' => true,
+    ],
+    'local_quicktools_delete_reviewpreset' => [
+        'classname' => \local_quicktools\external\review_preset_api::class,
+        'methodname' => 'delete',
+        'description' => 'Delete one of the user\'s review option presets.',
+        'type' => 'write',
+        'ajax' => true,
+    ],
+    'local_quicktools_default_reviewpreset' => [
+        'classname' => \local_quicktools\external\review_preset_api::class,
+        'methodname' => 'set_default',
+        'description' => 'Choose the review preset applied to new quizzes.',
+        'type' => 'write',
+        'ajax' => true,
+    ],
 ];

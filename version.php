@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026102301;
+$plugin->version   = 2026102302;
 $plugin->requires  = 2023042400;
 $plugin->component = 'local_quicktools';
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.2';
+$plugin->release   = '0.3';
