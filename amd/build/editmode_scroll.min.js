@@ -21,7 +21,7 @@
  * the reload we scroll that element back to the same spot.
  *
  * @module     local_quicktools/editmode_scroll
- * @copyright  2026 Bioptimizers
+ * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 define([], function() {

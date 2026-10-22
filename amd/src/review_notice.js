@@ -16,7 +16,7 @@
  * Shows students when they can review their quiz attempt (the review window), on the quiz page.
  *
  * @module     local_quicktools/review_notice
- * @copyright  2026 Bioptimizers
+ * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 define([], function() {

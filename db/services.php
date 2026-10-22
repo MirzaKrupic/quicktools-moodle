@@ -18,7 +18,7 @@
  * Web service functions (used by the page JavaScript only).
  *
  * @package   local_quicktools
- * @copyright 2026 Bioptimizers
+ * @copyright 2026 Mirza Krupic
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

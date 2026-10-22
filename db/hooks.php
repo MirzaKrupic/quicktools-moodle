@@ -18,7 +18,7 @@
  * Hook callbacks (Moodle 4.4 and later). Earlier versions ignore this file and use lib.php.
  *
  * @package   local_quicktools
- * @copyright 2026 Bioptimizers
+ * @copyright 2026 Mirza Krupic
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

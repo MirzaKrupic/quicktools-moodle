@@ -20,7 +20,7 @@
  * Moodle disables that button once a quiz has attempts, yet changing marks is still allowed then.
  *
  * @module     local_quicktools/quiz_bulkmarks
- * @copyright  2026 Bioptimizers
+ * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 define(['core/ajax', 'core/notification', 'core/str', 'local_quicktools/editmode_scroll'],

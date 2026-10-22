@@ -17,7 +17,7 @@
  * save the current grid as your own preset, and choose a default for new quizzes.
  *
  * @module     local_quicktools/review_presets
- * @copyright  2026 Bioptimizers
+ * @copyright  2026 Mirza Krupic
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 define(['core/ajax', 'core/notification', 'core/str'], function(Ajax, Notification, Str) {
