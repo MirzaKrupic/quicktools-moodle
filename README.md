@@ -11,6 +11,7 @@ Small quality-of-life fixes for everyday course and quiz work.
   their attempt after the quiz has closed. You choose what they get with the normal *Review options → After the quiz is
   closed* column (or a preset). Outside the window a scheduled task hides those options (so students cannot review) and
   puts them back when it opens, within about a minute; the form always shows your choice. The quiz needs a close date.
+  Students see a notice on the quiz page saying when review opens and closes and what they will be able to see.
   The Review window section also has a preset picker and checkboxes for those options, kept in step with the real column.
 
 - **Review option presets.** On the quiz settings page, a bar at the top of *Review options* applies a whole preset

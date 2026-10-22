@@ -40,6 +40,17 @@ class review_window {
     const FIELDS = ['reviewattempt', 'reviewcorrectness', 'reviewmarks', 'reviewspecificfeedback',
         'reviewgeneralfeedback', 'reviewrightanswer', 'reviewoverallfeedback'];
 
+    /** @var string[][] Quiz column => [string identifier, component] for the option names students see. */
+    const LABELS = [
+        'reviewattempt' => ['theattempt', 'quiz'],
+        'reviewcorrectness' => ['whethercorrect', 'question'],
+        'reviewmarks' => ['marks', 'quiz'],
+        'reviewspecificfeedback' => ['specificfeedback', 'question'],
+        'reviewgeneralfeedback' => ['generalfeedback', 'question'],
+        'reviewrightanswer' => ['rightanswer', 'question'],
+        'reviewoverallfeedback' => ['reviewoverallfeedback', 'quiz'],
+    ];
+
     /**
      * The window record for a quiz, or false.
      *
@@ -185,5 +196,51 @@ class review_window {
             }
         }
         return $changed;
+    }
+
+    /**
+     * What to tell students on the quiz page about the review window.
+     *
+     * Reviews only start once the quiz itself has closed, so the first moment is the later of the two.
+     *
+     * @param \stdClass $quiz
+     * @param int|null $now
+     * @return array|null type (info, success, secondary), title and details, or null if there is nothing to say
+     */
+    public static function notice(\stdClass $quiz, ?int $now = null): ?array {
+        $window = self::get((int) $quiz->id);
+        if (!$window) {
+            return null;
+        }
+        $mask = json_decode($window->mask ?? '', true) ?: [];
+        if (empty($mask['reviewattempt'])) {
+            return null;
+        }
+
+        $now = $now ?? time();
+        $open = max((int) $window->opentime, (int) $quiz->timeclose);
+        $close = (int) $window->closetime;
+        $format = get_string('strftimedaydatetime', 'langconfig');
+        $a = (object) ['open' => userdate($open, $format), 'close' => $close ? userdate($close, $format) : ''];
+
+        if ($close && $now >= $close) {
+            return ['type' => 'secondary', 'title' => get_string('reviewnotice_ended', 'local_quicktools', $a), 'details' => ''];
+        }
+        if ($now >= $open) {
+            $type = 'success';
+            $title = get_string($close ? 'reviewnotice_open' : 'reviewnotice_open_nolimit', 'local_quicktools', $a);
+        } else {
+            $type = 'info';
+            $title = get_string($close ? 'reviewnotice_soon' : 'reviewnotice_soon_nolimit', 'local_quicktools', $a);
+        }
+
+        $names = [];
+        foreach (self::LABELS as $column => [$identifier, $component]) {
+            if (!empty($mask[$column])) {
+                $names[] = get_string($identifier, $component);
+            }
+        }
+        $details = get_string('reviewnotice_what', 'local_quicktools', implode(', ', $names));
+        return ['type' => $type, 'title' => $title, 'details' => $details];
     }
 }

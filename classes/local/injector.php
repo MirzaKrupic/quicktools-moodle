@@ -72,8 +72,17 @@ class injector {
             $PAGE->requires->js_call_amd('local_quicktools/review_presets', 'init', [$data]);
         }
 
-        // Bulk marks on the quiz Questions page.
+        // Tell students about the review window on the quiz page.
         $cm = $PAGE->cm;
+        if ($PAGE->pagetype === 'mod-quiz-view' && $cm) {
+            $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
+            $notice = $quiz ? review_window::notice($quiz) : null;
+            if ($notice) {
+                $PAGE->requires->js_call_amd('local_quicktools/review_notice', 'init', [$notice]);
+            }
+        }
+
+        // Bulk marks on the quiz Questions page.
         if ($PAGE->pagetype === 'mod-quiz-edit' && $cm && has_capability('mod/quiz:manage', $PAGE->context)) {
             $PAGE->requires->js_call_amd('local_quicktools/quiz_bulkmarks', 'init', [(int) $cm->id]);
         }
