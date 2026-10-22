@@ -4,7 +4,7 @@ Small quality-of-life fixes for everyday course editing.
 
 - **Edit mode keeps your place.** Toggling *Edit mode* reloads the page; this remembers the
   section/activity/question at the top of the screen and scrolls back to it afterwards.
-- **Bulk marks in quizzes.** On a quiz's *Questions* page, click *Select multiple items*, tick the
+- **Bulk marks in quizzes.** On a quiz's *Questions* page, click *Set marks for several questions*, tick the
   questions, type a mark and press *Set marks for selected*. Grades are recalculated once for the batch.
   Needs `mod/quiz:manage`.
 

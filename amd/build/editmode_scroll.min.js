@@ -61,6 +61,20 @@ define([], function() {
         return url.pathname + '?' + (url.searchParams.get('id') || '');
     };
 
+    /**
+     * Moodle 4.x scrolls an inner container (#page) rather than the window; fall back to the window.
+     *
+     * @return {Element}
+     */
+    var scroller = function() {
+        var page = document.getElementById('page');
+        if (page && page.scrollHeight > page.clientHeight
+                && /(auto|scroll)/.test(window.getComputedStyle(page).overflowY)) {
+            return page;
+        }
+        return document.scrollingElement || document.documentElement;
+    };
+
     var headerBottom = function() {
         var nav = document.querySelector('nav.fixed-top, .navbar.fixed-top');
         return nav ? nav.getBoundingClientRect().bottom : 0;
@@ -91,7 +105,7 @@ define([], function() {
             page: pageKey(targetHref || window.location.href),
             id: anchor ? anchor.id : null,
             offset: anchor ? anchor.getBoundingClientRect().top : 0,
-            y: window.pageYOffset,
+            y: scroller().scrollTop,
             time: Date.now()
         });
     };
@@ -110,18 +124,19 @@ define([], function() {
         ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function(type) {
             window.addEventListener(type, function() {
                 moved = true;
-            }, {once: true, passive: true});
+            }, {once: true, passive: true, capture: true});
         });
 
         var apply = function() {
             if (moved) {
                 return;
             }
+            var container = scroller();
             var el = saved.id ? document.getElementById(saved.id) : null;
             if (el) {
-                window.scrollBy(0, el.getBoundingClientRect().top - saved.offset);
+                container.scrollTop += el.getBoundingClientRect().top - saved.offset;
             } else {
-                window.scrollTo(0, saved.y);
+                container.scrollTop = saved.y;
             }
         };
         apply();

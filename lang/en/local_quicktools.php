@@ -24,9 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['bulkmarks'] = 'Set marks for several questions';
 $string['marksfield'] = 'Marks for the selected questions';
 $string['marksinvalid'] = 'Enter a mark of 0 or more.';
 $string['marksupdated'] = 'Marks updated for {$a} questions. Reloading…';
+$string['pickquestion'] = 'Select question';
 $string['pluginname'] = 'Quick tools';
 $string['privacy:metadata'] = 'Quick tools does not store any personal data.';
 $string['setmarksselected'] = 'Set marks for selected';
