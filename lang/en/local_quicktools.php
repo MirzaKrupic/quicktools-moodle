@@ -25,10 +25,22 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['bulkmarks'] = 'Set marks for several questions';
+$string['closebeforeopen'] = 'Reviews must close after they open.';
+$string['enablewindow'] = 'Schedule when students can review';
+$string['enablewindow_help'] = 'Moodle\'s "After the quiz is closed" review options are either on or off. With a schedule, students only get the options you tick below between the two times. Outside the window they cannot review their attempt.
+
+While a schedule is on, Moodle\'s own "After the quiz is closed" boxes are controlled by the schedule and cannot be edited. Turn the schedule off to get your chosen options back there.
+
+Reviews only apply once the quiz has closed, so the quiz needs a close date. Changes take effect within a minute.';
 $string['marksfield'] = 'Marks for the selected questions';
 $string['marksinvalid'] = 'Enter a mark of 0 or more.';
 $string['marksupdated'] = 'Marks updated for {$a} questions. Reloading…';
 $string['pickquestion'] = 'Select question';
 $string['pluginname'] = 'Quick tools';
-$string['privacy:metadata'] = 'Quick tools does not store any personal data.';
+$string['privacy:metadata'] = 'Quick tools only stores quiz settings, not personal data.';
+$string['reviewsclose'] = 'Reviews close';
+$string['reviewsopen'] = 'Reviews open';
 $string['setmarksselected'] = 'Set marks for selected';
+$string['taskapply'] = 'Open and close quiz review windows';
+$string['windowheading'] = 'Review window';
+$string['windowshows'] = 'Students can see during the window';
